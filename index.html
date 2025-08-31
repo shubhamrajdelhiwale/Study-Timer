@@ -22,27 +22,28 @@
     </header>
 
     <!-- Add Subject -->
-    <section class="rounded-lg border border-yellow-500  p-4 bg-slate-100 dark:bg-white/3 mb-6">
-      <div class="grid md:grid-cols-3 gap-4 items-end">
-        <div class="mt-6 flex text-black items-center justify-center gap-4">
-        <div id="timerDisplay" class="text-6xl font-mono">00:00:00</div>
-        <div id="statusBadge" class="px-2 py-1 bg-yellow-400 rounded-full border border-gray-300 dark:border-gray-700 text-sm">Idle</div>
-      </div>
-        <div class="md:col-span-2">
-          <label class="block text-black text-3xl font-bold mb-3">Add Task</label>
-          <input id="subjectInput" type="text" placeholder="e.g. Math - Chapter 3" class="w-full px-3 text-black py-2 rounded-lg border border-black dark:border-gray-700 bg-white dark:bg-gray-800" />
-        </div>
+    <section class="rounded-lg border border-yellow-500 p-4 bg-slate-100 dark:bg-white/3 mb-6">
+  <div class="md:col-span-2">
+    <label class="block text-black text-3xl font-bold mb-3">Add Task</label>
+    <input id="subjectInput" type="text" placeholder="e.g. Math - Chapter 3" 
+      class="w-full px-3 text-black py-2 rounded-lg border border-black dark:border-gray-700 bg-white dark:bg-gray-800" />
+  </div>
 
-        <div class="flex gap-2 text-black  text-2xl font-bold justify-center">
-          <button id="startBtn" class="px-4 py-2 rounded-lg font-bold text-2xl bg-green-600 text-black disabled:opacity-50">Start</button>
-          <button id="pauseBtn" class="px-4 py-2 rounded-lg bg-yellow-300 border border-gray-300 disabled:opacity-50 dark:border-gray-700 hidden">Pause</button>
-          <button id="resumeBtn" class="px-4 py-2 rounded-lg bg-cyan-200 border border-gray-300 disabled:opacity-50 dark:border-gray-700 hidden">Resume</button>
-          <button id="stopBtn" class="px-4 py-2 rounded-lg border bg-red-400 border-gray-300 dark:border-gray-700 hidden">Stop</button>
-        </div>
-      </div>
+  <!-- Control Buttons -->
+  <div class="flex gap-3 text-black py-4 text-2xl font-bold justify-center">
+    <button id="startBtn" class="px-4 py-2 rounded-lg font-bold text-2xl bg-green-600 text-black disabled:opacity-50">Start</button>
+    <button id="pauseBtn" class="px-4 py-2 rounded-lg bg-yellow-300 border border-gray-300 disabled:opacity-50 dark:border-gray-700 hidden">Pause</button>
+    <button id="resumeBtn" class="px-4 py-2 rounded-lg bg-cyan-200 border border-gray-300 disabled:opacity-50 dark:border-gray-700 hidden">Resume</button>
+    <button id="stopBtn" class="px-4 py-2 rounded-lg border bg-red-400 border-gray-300 dark:border-gray-700 hidden">Stop</button>
+  </div>
 
-      
-    </section>
+  <!-- Centered Timer -->
+  <div class="flex justify-center items-center mt-6 text-black gap-4">
+    <div id="timerDisplay" class="text-5xl font-mono">00:00:00</div>
+    <div id="statusBadge" class="px-2 py-1 bg-yellow-400 rounded-full border border-gray-300 dark:border-gray-700 text-sm">Null</div>
+  </div>
+</section>
+
 
     <!-- Stats -->
     <section class="grid md:grid-cols-3 text-black gap-4 mb-6">
@@ -188,7 +189,7 @@
     function updateTimerUI() {
       if (!active) {
         timerDisplay.textContent = '00:00:00';
-        statusBadge.textContent = 'Idle';
+        statusBadge.textContent = 'Null';
         startBtn.disabled = false;
         pauseBtn.classList.add('hidden');
         resumeBtn.classList.add('hidden');
