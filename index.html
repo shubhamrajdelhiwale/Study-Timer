@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Study Time Recorder</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* small UX nicety */
+    .no-select { user-select: none; -webkit-user-select: none; -ms-user-select: none; }
+  </style>
+</head>
+<body class="h-full bg-black text-white ">
+  <div class="max-w-4xl mx-auto p-6">
+    <!-- Header -->
+    <header class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl text-yellow-400 font-semibold no-select">📚 Study Timer</h1>
+      <div class="flex gap-2">
+        <button id="themeToggle" class="px-3 py-2 text-black font-bold bg-yellow-300 rounded-lg border ">Study Hard</button>
+        <button id="clearBtn" class="px-3 py-2 rounded-lg border font-bold border-red-300 bg-red-600 text-sm">Clear Data</button>
+      </div>
+    </header>
+
+    <!-- Add Subject -->
+    <section class="rounded-lg border border-yellow-500  p-4 bg-slate-100 dark:bg-white/3 mb-6">
+      <div class="grid md:grid-cols-3 gap-4 items-end">
+        <div class="mt-6 flex text-black items-center justify-center gap-4">
+        <div id="timerDisplay" class="text-6xl font-mono">00:00:00</div>
+        <div id="statusBadge" class="px-2 py-1 bg-yellow-400 rounded-full border border-gray-300 dark:border-gray-700 text-sm">Idle</div>
+      </div>
+        <div class="md:col-span-2">
+          <label class="block text-black text-3xl font-bold mb-3">Add Task</label>
+          <input id="subjectInput" type="text" placeholder="e.g. Math - Chapter 3" class="w-full px-3 text-black py-2 rounded-lg border border-black dark:border-gray-700 bg-white dark:bg-gray-800" />
+        </div>
+
+        <div class="flex gap-2 text-black  text-2xl font-bold justify-center">
+          <button id="startBtn" class="px-4 py-2 rounded-lg font-bold text-2xl bg-green-600 text-black disabled:opacity-50">Start</button>
+          <button id="pauseBtn" class="px-4 py-2 rounded-lg bg-yellow-300 border border-gray-300 disabled:opacity-50 dark:border-gray-700 hidden">Pause</button>
+          <button id="resumeBtn" class="px-4 py-2 rounded-lg bg-cyan-200 border border-gray-300 disabled:opacity-50 dark:border-gray-700 hidden">Resume</button>
+          <button id="stopBtn" class="px-4 py-2 rounded-lg border bg-red-400 border-gray-300 dark:border-gray-700 hidden">Stop</button>
+        </div>
+      </div>
+
+      
+    </section>
+
+    <!-- Stats -->
+    <section class="grid md:grid-cols-3 text-black gap-4 mb-6">
+      <div class="rounded-lg border p-4 bg-rose-200 ">
+        <div class="text-sm text-black dark:text-gray-300">Total Time</div>
+        <div id="totalTime" class="text-2xl font-semibold">00:00:00</div>
+      </div>
+      <div class="rounded-lg border p-4 bg-rose-200 dark:bg-white/3">
+        <div class="text-sm text-black dark:text-gray-300">Sessions</div>
+        <div id="sessionCount" class="text-2xl font-semibold">0</div>
+      </div>
+      <div class="rounded-lg border p-4 bg-rose-200 dark:bg-white/3">
+        <div class="text-sm text-black dark:text-gray-300">Average / Session</div>
+        <div id="avgTime" class="text-2xl font-semibold">00:00:00</div>
+      </div>
+    </section>
+
+
+    <!-- Filters -->
+    <section class="rounded-lg border border-gray-200  p-4 bg-lime-500 text-blue-900  mb-6">
+      <h2 class="text-2xl font-bold mb-3">Filters</h2>
+      <div class="grid md:grid-cols-4 gap-3 items-end">
+        <div>
+          <label class="block text-lg font-semibold text-black  mb-2">Timeframe</label>
+          <select id="timeframe" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700">
+            <option value="day">Today</option>
+            <option value="week">This Week</option>
+            <option value="month" selected>This Month</option>
+            <option value="custom">Custom Range</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-lg font-semibold text-black mb-2">Subject</label>
+          <select id="subjectFilter" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700">
+            <option value="__all__">All Subjects</option>
+          </select>
+        </div>
+
+        <div id="dateAWrapper" class="hidden">
+          <label class="block text-sm mb-2">Start Date</label>
+          <input id="dateA" type="date" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700" />
+        </div>
+
+        <div id="dateBWrapper" class="hidden">
+          <label class="block text-sm mb-2">End Date</label>
+          <input id="dateB" type="date" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700" />
+        </div>
+      </div>
+
+      <div id="rangeInfo" class="mt-3 text-sm text-black dark:text-gray-300"></div>
+    </section>
+
+    
+
+    <!-- Time by subject -->
+    <section class="rounded-lg border bg-yellow-300 text-black border-black  p-4 dark:bg-white/3 mb-6">
+      <h3 class="text-lg bg-yellow font-medium mb-3">Time by Subject (current filter)</h3>
+      <div id="subjectBreakdown" class="grid bg-yellow-300   sm:grid-cols-2 gap-2"></div>
+    </section>
+
+    <!-- Sessions Table -->
+    <section class="rounded-lg border border-gray-200  p-4 bg-green-200 text-black  mb-6">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-2xl font-bold ">Sessions</h3>
+        <div id="tableMeta" class="text-sm text-black dark:text-gray-300"></div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="min-w-full  text-sm">
+          <thead class="text-left">
+            <tr class="border-b bg-white border-gray-200 ">
+              <th class="py-2 pr-4">Date</th>
+              <th class="py-2 pr-4">Subject</th>
+              <th class="py-2 pr-4">Start</th>
+              <th class="py-2 pr-4">End</th>
+              <th class="py-2 pr-4">Duration</th>
+            </tr>
+          </thead>
+          <tbody id="sessionsBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer class="text-center text-xs text-white ">This Study Timer is Mainly Made for Shubham Raj Only.</footer>
+  </div>
+
+  <script>
+    /* ---------- Utilities ---------- */
+    const pad = (n) => String(n).padStart(2, '0');
+    const formatHMS = (sec) => {
+      sec = Math.max(0, Math.floor(sec));
+      const h = Math.floor(sec / 3600);
+      const m = Math.floor((sec % 3600) / 60);
+      const s = sec % 60;
+      return `${pad(h)}:${pad(m)}:${pad(s)}`;
+    };
+
+    const startOfDay = (d) => { const x = new Date(d); x.setHours(0,0,0,0); return x; };
+    const endOfDay = (d) => { const x = new Date(d); x.setHours(23,59,59,999); return x; };
+    const startOfWeek = (d) => { const x = new Date(d); const day = x.getDay(); const diff = (day === 0 ? -6 : 1) - day; x.setDate(x.getDate() + diff); x.setHours(0,0,0,0); return x; };
+    const endOfWeek = (d) => { const x = startOfWeek(d); x.setDate(x.getDate()+6); x.setHours(23,59,59,999); return x; };
+    const startOfMonth = (d) => { const x = new Date(d.getFullYear(), d.getMonth(), 1); x.setHours(0,0,0,0); return x; };
+    const endOfMonth = (d) => { const x = new Date(d.getFullYear(), d.getMonth()+1, 0); x.setHours(23,59,59,999); return x; };
+
+    /* ---------- Storage keys ---------- */
+    const LS_SESSIONS = 'study_sessions_v1';
+    const LS_ACTIVE = 'study_active_v1';
+    const LS_THEME = 'study_theme_v1';
+
+    /* ---------- State ---------- */
+    let sessions = JSON.parse(localStorage.getItem(LS_SESSIONS) || '[]'); // array of {id, subject, startISO, endISO, durationSec}
+    let active = JSON.parse(localStorage.getItem(LS_ACTIVE) || 'null');   // {subject, startISO, elapsedSec, paused}
+    let ticker = null;
+
+    /* ---------- Elements ---------- */
+    const subjectInput = document.getElementById('subjectInput');
+    const startBtn = document.getElementById('startBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const resumeBtn = document.getElementById('resumeBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const timerDisplay = document.getElementById('timerDisplay');
+    const statusBadge = document.getElementById('statusBadge');
+    const timeframe = document.getElementById('timeframe');
+    const subjectFilter = document.getElementById('subjectFilter');
+    const dateA = document.getElementById('dateA');
+    const dateB = document.getElementById('dateB');
+    const dateAWrapper = document.getElementById('dateAWrapper');
+    const dateBWrapper = document.getElementById('dateBWrapper');
+    const rangeInfo = document.getElementById('rangeInfo');
+    const totalTimeEl = document.getElementById('totalTime');
+    const sessionCountEl = document.getElementById('sessionCount');
+    const avgTimeEl = document.getElementById('avgTime');
+    const subjectBreakdown = document.getElementById('subjectBreakdown');
+    const sessionsBody = document.getElementById('sessionsBody');
+    const tableMeta = document.getElementById('tableMeta');
+    const themeToggle = document.getElementById('themeToggle');
+    const clearBtn = document.getElementById('clearBtn');
+
+
+
+    /* ---------- Timer UI updates ---------- */
+    function updateTimerUI() {
+      if (!active) {
+        timerDisplay.textContent = '00:00:00';
+        statusBadge.textContent = 'Idle';
+        startBtn.disabled = false;
+        pauseBtn.classList.add('hidden');
+        resumeBtn.classList.add('hidden');
+        stopBtn.classList.add('hidden');
+        subjectInput.disabled = false;
+        return;
+      }
+
+      timerDisplay.textContent = formatHMS(active.elapsedSec);
+      statusBadge.textContent = active.paused ? 'Paused' : 'Running';
+      startBtn.disabled = true;
+      pauseBtn.classList.toggle('hidden', active.paused);
+      resumeBtn.classList.toggle('hidden', !active.paused);
+      stopBtn.classList.remove('hidden');
+      subjectInput.disabled = true;
+    }
+
+    function tick() {
+      if (active && !active.paused) {
+        active.elapsedSec += 1;
+        localStorage.setItem(LS_ACTIVE, JSON.stringify(active)); // persist every second (survives reload)
+        timerDisplay.textContent = formatHMS(active.elapsedSec);
+      }
+    }
+
+    /* ---------- Timer control ---------- */
+    startBtn.addEventListener('click', () => {
+      const subj = subjectInput.value.trim();
+      if (!subj) { alert('Enter a subject or task before starting.'); return; }
+      const now = new Date();
+      active = { subject: subj, startISO: now.toISOString(), elapsedSec: 0, paused: false };
+      localStorage.setItem(LS_ACTIVE, JSON.stringify(active));
+      if (!ticker) ticker = setInterval(tick, 1000);
+      updateTimerUI();
+    });
+
+    pauseBtn.addEventListener('click', () => {
+      if (!active) return;
+      active.paused = true;
+      localStorage.setItem(LS_ACTIVE, JSON.stringify(active));
+      updateTimerUI();
+    });
+
+    resumeBtn.addEventListener('click', () => {
+      if (!active) return;
+      active.paused = false;
+      localStorage.setItem(LS_ACTIVE, JSON.stringify(active));
+      if (!ticker) ticker = setInterval(tick, 1000);
+      updateTimerUI();
+    });
+
+    stopBtn.addEventListener('click', () => {
+      if (!active) return;
+      // Build record and save immediately
+      const end = new Date();
+      const rec = {
+        id: Date.now().toString(),
+        subject: active.subject,
+        startISO: active.startISO,
+        endISO: end.toISOString(),
+        durationSec: active.elapsedSec
+      };
+      sessions.push(rec);
+      localStorage.setItem(LS_SESSIONS, JSON.stringify(sessions));   // <--- critical save
+      localStorage.removeItem(LS_ACTIVE);
+      active = null;
+      updateTimerUI();
+      renderAll();
+      subjectInput.value = '';
+    });
+
+    /* ---------- Filters & rendering ---------- */
+    timeframe.addEventListener('change', () => {
+      const tf = timeframe.value;
+      const showCustom = tf === 'custom';
+      dateAWrapper.classList.toggle('hidden', !showCustom);
+      dateBWrapper.classList.toggle('hidden', !showCustom);
+      computeAndRender();
+    });
+    dateA.addEventListener('change', computeAndRender);
+    dateB.addEventListener('change', computeAndRender);
+    subjectFilter.addEventListener('change', computeAndRender);
+
+    function computeRange() {
+      const now = new Date();
+      let a, b, label;
+      switch (timeframe.value) {
+        case 'day': a = startOfDay(now); b = endOfDay(now); label = 'Today'; break;
+        case 'week': a = startOfWeek(now); b = endOfWeek(now); label = 'This Week'; break;
+        case 'month': a = startOfMonth(now); b = endOfMonth(now); label = 'This Month'; break;
+        case 'custom':
+          a = dateA.value ? startOfDay(new Date(dateA.value)) : startOfDay(now);
+          b = dateB.value ? endOfDay(new Date(dateB.value)) : endOfDay(now);
+          label = 'Custom'; break;
+      }
+      return { a, b, label };
+    }
+
+    function within(iso, a, b) {
+      const t = new Date(iso).getTime();
+      return t >= a.getTime() && t <= b.getTime();
+    }
+
+    function computeAndRender() {
+      const { a, b, label } = computeRange();
+      rangeInfo.textContent = `${label} • ${a.toDateString()} → ${b.toDateString()}`;
+
+      const subj = subjectFilter.value || '__all__';
+      const filtered = sessions.filter(s => within(s.startISO, a, b) && (subj === '__all__' || s.subject === subj));
+
+      // Stats
+      const totalSec = filtered.reduce((acc, s) => acc + (s.durationSec || 0), 0);
+      totalTimeEl.textContent = formatHMS(totalSec);
+      sessionCountEl.textContent = String(filtered.length);
+      avgTimeEl.textContent = formatHMS(filtered.length ? Math.round(totalSec / filtered.length) : 0);
+
+      // Breakdown by subject
+      const bySubj = {};
+      filtered.forEach(s => { bySubj[s.subject] = (bySubj[s.subject] || 0) + (s.durationSec || 0); });
+      subjectBreakdown.innerHTML = '';
+      const entries = Object.entries(bySubj).sort((a,b)=>b[1]-a[1]);
+      if (entries.length === 0) {
+        subjectBreakdown.innerHTML = '<div class="text-sm text-gray-500 ">No data in this range.</div>';
+      } else {
+        entries.forEach(([k,v])=>{
+          const el = document.createElement('div');
+          el.className = 'flex items-center justify-between px-3 py-2 rounded-lg border bg-cyan-100 border-black ';
+          el.innerHTML = `<div>${k}</div><div class="font-mono">${formatHMS(v)}</div>`;
+          subjectBreakdown.appendChild(el);
+        });
+      }
+
+      // Table
+      sessionsBody.innerHTML = '';
+      if (filtered.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = `<td colspan="5" class="py-3 text-gray-500 dark:text-gray-400">No sessions found.</td>`;
+        sessionsBody.appendChild(row);
+      } else {
+        const sorted = filtered.slice().sort((a,b)=>new Date(b.startISO)-new Date(a.startISO));
+        sorted.forEach(s=>{
+          const d = new Date(s.startISO);
+          const fmt = (iso) => {
+            const dd = new Date(iso);
+            return dd.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+          };
+          const tr = document.createElement('tr');
+          tr.className = 'border-b border-gray-100 ';
+          tr.innerHTML = `
+            <td class="py-2 pr-4">${d.toLocaleDateString()}</td>
+            <td class="py-2 pr-4">${s.subject}</td>
+            <td class="py-2 pr-4">${fmt(s.startISO)}</td>
+            <td class="py-2 pr-4">${fmt(s.endISO)}</td>
+            <td class="py-2 pr-4 font-mono">${formatHMS(s.durationSec || 0)}</td>
+          `;
+          sessionsBody.appendChild(tr);
+        });
+      }
+
+      tableMeta.textContent = `${filtered.length} row(s)`;
+    }
+
+    function refreshSubjectOptions() {
+      const subjects = Array.from(new Set(sessions.map(s => s.subject))).sort();
+      const cur = subjectFilter.value || '__all__';
+      subjectFilter.innerHTML = '<option value="__all__">All Subjects</option>' + subjects.map(s=>`<option value="${s}">${s}</option>`).join('');
+      if ([ '__all__', ...subjects ].includes(cur)) subjectFilter.value = cur;
+      else subjectFilter.value = '__all__';
+    }
+
+    function renderAll() {
+      sessions = JSON.parse(localStorage.getItem(LS_SESSIONS) || '[]');
+      refreshSubjectOptions();
+      computeAndRender();
+    }
+
+    /* ---------- Clear data ---------- */
+    clearBtn.addEventListener('click', () => {
+      if (!confirm('Delete ALL saved sessions? This cannot be undone.')) return;
+      localStorage.removeItem(LS_SESSIONS);
+      localStorage.removeItem(LS_ACTIVE);
+      sessions = [];
+      active = null;
+      updateTimerUI();
+      renderAll();
+    });
+
+    /* ---------- Init & persistence ---------- */
+    function ensureTicker() {
+      if (!ticker) ticker = setInterval(tick, 1000);
+    }
+
+    function init() {
+      
+
+      // default custom dates to this month
+      const now = new Date();
+      dateA.value = startOfMonth(now).toISOString().slice(0,10);
+      dateB.value = endOfMonth(now).toISOString().slice(0,10);
+
+      // restore sessions & active
+      sessions = JSON.parse(localStorage.getItem(LS_SESSIONS) || '[]');
+      active = JSON.parse(localStorage.getItem(LS_ACTIVE) || 'null');
+
+      if (active) {
+        // If active exists, make sure it's numeric and start ticking
+        active.elapsedSec = Math.max(0, Number(active.elapsedSec) || 0);
+        ensureTicker();
+      }
+
+      updateTimerUI();
+      renderAll();
+
+      // keep UI fresh when tab becomes active
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+          sessions = JSON.parse(localStorage.getItem(LS_SESSIONS) || '[]');
+          active = JSON.parse(localStorage.getItem(LS_ACTIVE) || 'null');
+          updateTimerUI();
+          renderAll();
+        }
+      });
+    }
+
+    // compute initial render
+    init();
+  </script>
+</body>
+</html>
