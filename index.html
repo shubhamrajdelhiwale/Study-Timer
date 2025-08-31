@@ -180,7 +180,7 @@ function updateTimerUI() {
     subjectInput.disabled=false;
     return;
   }
-  timerDisplay.textContent=formatHMS(active.elapsedSec);
+  timerDisplay.textContent=formatHMS(active.elapsedSec || 0);
   statusBadge.textContent=active.paused?'Paused':'Running';
   startBtn.disabled=true;
   pauseBtn.classList.toggle('hidden',active.paused);
@@ -189,19 +189,21 @@ function updateTimerUI() {
   subjectInput.disabled=true;
 }
 
+/* ---------- Tick Function ---------- */
 function tick(){
-  if(active && !active.paused){
-    active.elapsedSec+=1;
-    localStorage.setItem(LS_ACTIVE,JSON.stringify(active));
-    timerDisplay.textContent=formatHMS(active.elapsedSec);
-  }
+  if(!active || active.paused) return;
+  const now = new Date();
+  const totalMs = now - new Date(active.startISO) - (active.pausedDuration || 0);
+  active.elapsedSec = Math.floor(totalMs / 1000);
+  localStorage.setItem(LS_ACTIVE, JSON.stringify(active));
+  timerDisplay.textContent = formatHMS(active.elapsedSec);
 }
 
 /* ---------- Timer Controls ---------- */
 startBtn.addEventListener('click',()=>{
   const subj=subjectInput.value.trim();
   if(!subj){alert('Enter a subject before starting.'); return;}
-  active={subject:subj,startISO:new Date().toISOString(),elapsedSec:0,paused:false};
+  active={subject:subj,startISO:new Date().toISOString(),elapsedSec:0,paused:false,pausedDuration:0};
   localStorage.setItem(LS_ACTIVE,JSON.stringify(active));
   if(!ticker) ticker=setInterval(tick,1000);
   updateTimerUI();
@@ -210,12 +212,18 @@ startBtn.addEventListener('click',()=>{
 pauseBtn.addEventListener('click',()=>{
   if(!active) return;
   active.paused=true;
+  active.pausedAt=new Date().toISOString();
   localStorage.setItem(LS_ACTIVE,JSON.stringify(active));
   updateTimerUI();
 });
 
 resumeBtn.addEventListener('click',()=>{
   if(!active) return;
+  if(active.pausedAt){
+    const pausedFor = new Date() - new Date(active.pausedAt);
+    active.pausedDuration = (active.pausedDuration || 0) + pausedFor;
+    delete active.pausedAt;
+  }
   active.paused=false;
   localStorage.setItem(LS_ACTIVE,JSON.stringify(active));
   if(!ticker) ticker=setInterval(tick,1000);
@@ -235,17 +243,9 @@ stopBtn.addEventListener('click',()=>{
   subjectInput.value='';
 });
 
-/* ---------- Filters ---------- */
-timeframe.addEventListener('change',()=>{
-  const showCustom = timeframe.value==='custom';
-  dateAWrapper.classList.toggle('hidden',!showCustom);
-  dateBWrapper.classList.toggle('hidden',!showCustom);
-  computeAndRender();
-});
-dateA.addEventListener('change',computeAndRender);
-dateB.addEventListener('change',computeAndRender);
-subjectFilter.addEventListener('change',computeAndRender);
+/* ---------- Filters & Render ---------- */
 
+// Compute date ranges based on selected timeframe
 function computeRange(){
   const now=new Date();
   let a,b,label;
@@ -257,8 +257,11 @@ function computeRange(){
   }
   return {a,b,label};
 }
+
+// Check if a session's date is within range
 function within(iso,a,b){const t=new Date(iso).getTime();return t>=a.getTime() && t<=b.getTime();}
 
+// Apply filters and render stats/table
 function computeAndRender(){
   const {a,b,label}=computeRange();
   rangeInfo.textContent=`${label} • ${a.toDateString()} → ${b.toDateString()}`;
@@ -313,12 +316,14 @@ function computeAndRender(){
   tableMeta.textContent=`${filtered.length} row(s)`;
 }
 
+// Delete session by ID
 function deleteSession(id){
   sessions=sessions.filter(s=>s.id!==id);
   localStorage.setItem(LS_SESSIONS,JSON.stringify(sessions));
   renderAll();
 }
 
+// Refresh subject filter options
 function refreshSubjectOptions(){
   const subjects=Array.from(new Set(sessions.map(s=>s.subject))).sort();
   const cur=subjectFilter.value||'__all__';
@@ -327,11 +332,13 @@ function refreshSubjectOptions(){
   else subjectFilter.value='__all__';
 }
 
+// Render all sessions and update filters/UI
 function renderAll(){
   sessions=JSON.parse(localStorage.getItem(LS_SESSIONS)||'[]');
   refreshSubjectOptions();
   computeAndRender();
 }
+
 
 /* ---------- Clear Data ---------- */
 clearBtn.addEventListener('click',()=>{
@@ -352,9 +359,19 @@ function init(){
   dateB.value=endOfMonth(now).toISOString().slice(0,10);
   sessions=JSON.parse(localStorage.getItem(LS_SESSIONS)||'[]');
   active=JSON.parse(localStorage.getItem(LS_ACTIVE)||'null');
-  if(active){active.elapsedSec=Math.max(0,Number(active.elapsedSec)||0); ensureTicker();}
+
+  if(active){
+    active.elapsedSec = active.elapsedSec || 0;
+    if(!active.paused){
+      const totalMs = new Date() - new Date(active.startISO) - (active.pausedDuration || 0);
+      active.elapsedSec = Math.floor(totalMs / 1000);
+      ensureTicker();
+    }
+  }
+
   updateTimerUI();
   renderAll();
+
   document.addEventListener('visibilitychange',()=>{
     if(!document.hidden){
       sessions=JSON.parse(localStorage.getItem(LS_SESSIONS)||'[]');
@@ -366,3 +383,5 @@ function init(){
 }
 init();
 </script>
+</body>
+</html>
