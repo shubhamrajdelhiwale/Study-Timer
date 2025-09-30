@@ -13,7 +13,7 @@
   <div class="max-w-4xl mx-auto mt-2 p-2">
     <!-- Header -->
     <header class="flex items-center justify-between mb-6">
-      <h1 class="text-2xl font-bold text-red-300">Study <span class="text-2xl font-bold text-cyan-200">Hard </span><span class="text-2xl font-bold text-yellow-300">Shubham</span></h1>
+      <h1 class="text-2xl font-bold text-red-300">Winter <span class="text-2xl font-bold text-cyan-200">Arc </span><span class="text-2xl font-bold text-yellow-300">Challenge</span></h1>
       <div class="flex gap-2">
         <button id="clearBtn" class="px-3 py-2 rounded-lg border font-semibold border-white bg-red-600 text-sm">Clear Data</button>
       </div>
@@ -57,7 +57,19 @@
         <div id="avgTime" class="text-2xl font-semibold">00:00:00</div>
       </div>
     </section>
-
+        <!-- To-Do Section -->
+    <section class="rounded-lg border border-blue-800 p-4 bg-gray-800 text-black mb-6">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-2xl text-white font-bold">Daily To-Do</h2>
+        <button id="clearTodos" class="px-3 py-1 rounded-lg bg-red-500 text-white text-sm">Clear All</button>
+      </div>
+      <div class="flex gap-2 mb-3">
+        <input id="todoInput" type="text" placeholder="Add a task..." 
+          class="flex-1 px-3 py-2 rounded-lg border border-gray-400" />
+        <button id="addTodo" class="px-4 py-2 rounded-lg bg-green-600 text-white font-semibold">Add</button>
+      </div>
+      <ul id="todoList" class="space-y-2"></ul>
+    </section>
     <!-- Filters -->
     <section class="rounded-lg border border-gray-200  p-4 bg-lime-500 text-blue-900  mb-6">
       <h2 class="text-2xl font-bold mb-3">Filters</h2>
@@ -95,6 +107,8 @@
       <div id="subjectBreakdown" class="grid bg-yellow-300 sm:grid-cols-2 gap-2"></div>
     </section>
 
+
+
     <!-- Sessions Table -->
     <section class="rounded-lg border border-gray-200  p-4 bg-green-200 text-black  mb-6">
       <div class="flex items-center justify-between mb-3">
@@ -116,9 +130,10 @@
           <tbody id="sessionsBody"></tbody>
         </table>
       </div>
+      
     </section>
 
-    <footer class="text-center text-lg text-white ">This Timer is Made for Shubham Raj Only.</footer>
+    <footer class="text-center text-lg text-white ">This Timer is Made for Winners Only.</footer>
   </div>
 
 <script>
@@ -262,50 +277,94 @@ function computeRange(){
 function within(iso,a,b){const t=new Date(iso).getTime();return t>=a.getTime() && t<=b.getTime();}
 
 // Apply filters and render stats/table
-function computeAndRender(){
-  const {a,b,label}=computeRange();
-  rangeInfo.textContent=`${label} • ${a.toDateString()} → ${b.toDateString()}`;
-  const subj=subjectFilter.value||'__all__';
-  const filtered=sessions.filter(s=>within(s.startISO,a,b) && (subj==='__all__'||s.subject===subj));
+/* ---------- Filters & Render ---------- */
 
-  // Stats
-  const totalSec=filtered.reduce((acc,s)=>acc+(s.durationSec||0),0);
-  totalTimeEl.textContent=formatHMS(totalSec);
-  sessionCountEl.textContent=String(filtered.length);
-  avgTimeEl.textContent=formatHMS(filtered.length?Math.round(totalSec/filtered.length):0);
+// Compute date ranges based on selected timeframe
+function computeRange() {
+  const now = new Date();
+  let a, b, label;
+  switch (timeframe.value) {
+    case 'day': a = startOfDay(now); b = endOfDay(now); label = 'Today'; break;
+    case 'week': a = startOfWeek(now); b = endOfWeek(now); label = 'This Week'; break;
+    case 'month': a = startOfMonth(now); b = endOfMonth(now); label = 'This Month'; break;
+    case 'custom':
+      a = dateA.value ? startOfDay(new Date(dateA.value)) : startOfDay(now);
+      b = dateB.value ? endOfDay(new Date(dateB.value)) : endOfDay(now);
+      label = 'Custom';
+      break;
+  }
+  return { a, b, label };
+}
 
-  // Subject Breakdown
-  const bySubj={};
-  filtered.forEach(s=>{bySubj[s.subject]=(bySubj[s.subject]||0)+(s.durationSec||0);});
-  subjectBreakdown.innerHTML='';
-  const entries=Object.entries(bySubj).sort((a,b)=>b[1]-a[1]);
-  if(entries.length===0){subjectBreakdown.innerHTML='<div class="text-sm text-gray-500">No data in this range.</div>';}
-  else entries.forEach(([k,v])=>{
-    const el=document.createElement('div');
-    el.className='flex items-center justify-between px-3 py-2 rounded-lg border bg-cyan-100 border-black';
-    el.innerHTML=`<div>${k}</div><div class="font-mono">${formatHMS(v)}</div>`;
-    subjectBreakdown.appendChild(el);
+// Check if a session's date is within range
+function within(iso, a, b) {
+  const t = new Date(iso).getTime();
+  return t >= a.getTime() && t <= b.getTime();
+}
+
+// Refresh subject filter options
+function refreshSubjectOptions() {
+  const subjects = Array.from(new Set(sessions.map(s => s.subject.trim()))).sort();
+  const cur = subjectFilter.value || '__all__';
+  subjectFilter.innerHTML =
+    '<option value="__all__">All Subjects</option>' +
+    subjects.map(s => `<option value="${s}">${s}</option>`).join('');
+  subjectFilter.value = subjects.includes(cur) || cur === '__all__' ? cur : '__all__';
+}
+
+// Apply filters and render stats/table
+function computeAndRender() {
+  const { a, b, label } = computeRange();
+  rangeInfo.textContent = `${label} • ${a.toDateString()} → ${b.toDateString()}`;
+  const subj = subjectFilter.value || '__all__';
+
+  const filtered = sessions.filter(s => {
+    const inRange = within(s.startISO, a, b);
+    const subjMatch = subj === '__all__' || s.subject.trim().toLowerCase() === subj.toLowerCase();
+    return inRange && subjMatch;
   });
 
+  // Stats
+  const totalSec = filtered.reduce((acc, s) => acc + (s.durationSec || 0), 0);
+  totalTimeEl.textContent = formatHMS(totalSec);
+  sessionCountEl.textContent = String(filtered.length);
+  avgTimeEl.textContent = formatHMS(filtered.length ? Math.round(totalSec / filtered.length) : 0);
+
+  // Subject Breakdown
+  const bySubj = {};
+  filtered.forEach(s => { bySubj[s.subject.trim()] = (bySubj[s.subject.trim()] || 0) + (s.durationSec || 0); });
+  subjectBreakdown.innerHTML = '';
+  const entries = Object.entries(bySubj).sort((a, b) => b[1] - a[1]);
+  if (entries.length === 0) {
+    subjectBreakdown.innerHTML = '<div class="text-sm text-gray-500">No data in this range.</div>';
+  } else {
+    entries.forEach(([k, v]) => {
+      const el = document.createElement('div');
+      el.className = 'flex items-center justify-between px-3 py-2 rounded-lg border bg-cyan-100 border-black';
+      el.innerHTML = `<div>${k}</div><div class="font-mono">${formatHMS(v)}</div>`;
+      subjectBreakdown.appendChild(el);
+    });
+  }
+
   // Table with delete button
-  sessionsBody.innerHTML='';
-  if(filtered.length===0){
-    const row=document.createElement('tr');
-    row.innerHTML='<td colspan="6" class="py-3 text-gray-500 dark:text-gray-400">No sessions found.</td>';
+  sessionsBody.innerHTML = '';
+  if (filtered.length === 0) {
+    const row = document.createElement('tr');
+    row.innerHTML = '<td colspan="6" class="py-3 text-gray-500 dark:text-gray-400">No sessions found.</td>';
     sessionsBody.appendChild(row);
   } else {
-    const sorted=filtered.slice().sort((a,b)=>new Date(b.startISO)-new Date(a.startISO));
-    sorted.forEach(s=>{
-      const d=new Date(s.startISO);
-      const fmt=(iso)=>{const dd=new Date(iso);return dd.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}
-      const tr=document.createElement('tr');
-      tr.className='border-b border-gray-100';
-      tr.innerHTML=`
+    const sorted = filtered.slice().sort((a, b) => new Date(b.startISO) - new Date(a.startISO));
+    sorted.forEach(s => {
+      const d = new Date(s.startISO);
+      const fmt = iso => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const tr = document.createElement('tr');
+      tr.className = 'border-b border-gray-100';
+      tr.innerHTML = `
         <td class="py-2 pr-4">${d.toLocaleDateString()}</td>
         <td class="py-2 pr-4">${s.subject}</td>
         <td class="py-2 pr-4">${fmt(s.startISO)}</td>
         <td class="py-2 pr-4">${fmt(s.endISO)}</td>
-        <td class="py-2 pr-4 font-mono">${formatHMS(s.durationSec||0)}</td>
+        <td class="py-2 pr-4 font-mono">${formatHMS(s.durationSec || 0)}</td>
         <td class="py-2 pr-4">
           <button class="text-red-600 hover:underline" onclick="deleteSession('${s.id}')">Delete</button>
         </td>
@@ -313,8 +372,29 @@ function computeAndRender(){
       sessionsBody.appendChild(tr);
     });
   }
-  tableMeta.textContent=`${filtered.length} row(s)`;
+
+  tableMeta.textContent = `${filtered.length} row(s)`;
 }
+
+// Delete session by ID
+function deleteSession(id) {
+  sessions = sessions.filter(s => s.id !== id);
+  localStorage.setItem(LS_SESSIONS, JSON.stringify(sessions));
+  renderAll();
+}
+
+// Render everything
+function renderAll() {
+  sessions = JSON.parse(localStorage.getItem(LS_SESSIONS) || '[]');
+  refreshSubjectOptions();
+  computeAndRender();
+}
+
+// Listen to filter changes
+timeframe.addEventListener('change', computeAndRender);
+subjectFilter.addEventListener('change', computeAndRender);
+dateA.addEventListener('change', computeAndRender);
+dateB.addEventListener('change', computeAndRender);
 
 // Delete session by ID
 function deleteSession(id){
@@ -382,6 +462,103 @@ function init(){
   });
 }
 init();
+
+
+/* ---------- To-Do Section ---------- */
+const LS_TODOS = "study_todos_v1";
+const LS_TODO_DATE = "study_todo_date";
+
+// Default daily tasks
+const DEFAULT_TODOS = [
+  { text: "🏋️ Exercise", done: false },
+  { text: "🍔 No Fast Food", done: false },
+  { text: "👨🏻‍💻 Leetcode", done: false },
+  { text: "💻 GeekForGeek", done: false }
+];
+
+let todos = JSON.parse(localStorage.getItem(LS_TODOS) || "[]");
+let lastTodoDate = localStorage.getItem(LS_TODO_DATE);
+
+// Reset if the date has changed
+function checkTodoReset() {
+  const today = new Date().toISOString().slice(0, 10); // yyyy-mm-dd
+  if (lastTodoDate !== today) {
+    // reset with default tasks
+    todos = [...DEFAULT_TODOS];
+    localStorage.setItem(LS_TODOS, JSON.stringify(todos));
+    localStorage.setItem(LS_TODO_DATE, today);
+  }
+}
+checkTodoReset();
+
+// Elements
+const todoInput = document.getElementById("todoInput");
+const addTodoBtn = document.getElementById("addTodo");
+const todoList = document.getElementById("todoList");
+const clearTodosBtn = document.getElementById("clearTodos");
+
+// Render To-dos
+function renderTodos() {
+  todoList.innerHTML = "";
+  if (todos.length === 0) {
+    todoList.innerHTML = `<li class="text-gray-500">No tasks for today 🎉</li>`;
+    return;
+  }
+
+  // Sort: pending tasks first, done tasks last
+  todos.sort((a, b) => a.done - b.done);
+
+  todos.forEach((task, idx) => {
+    const li = document.createElement("li");
+    li.className =
+      `flex justify-between items-center px-3 py-2 rounded-lg border border-gray-300 ` +
+      (task.done ? "bg-green-200" : "bg-yellow-200");
+
+    // strike-through if completed
+    const taskText = task.done
+      ? `<span class="text-black line-through opacity-80">${task.text}</span>`
+      : `<span class="text-black">${task.text}</span>`;
+
+    // if task is done → show green tick (no button)
+    const actionBtn = task.done
+      ? `<span class="bg-green-500 text-white rounded-full w-8 h-8 flex items-center justify-center">✔</span>`
+      : `<button class="bg-yellow-200 text-red-800 rounded-full w-8 h-8 flex items-center justify-center" onclick="toggleDone(${idx})">Done</button>`;
+
+    li.innerHTML = `${taskText} ${actionBtn}`;
+    todoList.appendChild(li);
+  });
+}
+
+
+// Add task
+addTodoBtn.addEventListener("click", () => {
+  const val = todoInput.value.trim();
+  if (!val) return;
+  todos.push({ text: val, done: false });
+  localStorage.setItem(LS_TODOS, JSON.stringify(todos));
+  localStorage.setItem(LS_TODO_DATE, new Date().toISOString().slice(0, 10));
+  todoInput.value = "";
+  renderTodos();
+});
+
+// Toggle Done (mark/unmark task)
+function toggleDone(idx) {
+  todos[idx].done = !todos[idx].done;
+  localStorage.setItem(LS_TODOS, JSON.stringify(todos));
+  renderTodos();
+}
+
+// Clear all tasks
+clearTodosBtn.addEventListener("click", () => {
+  if (!confirm("Clear all tasks for today?")) return;
+  todos = [...DEFAULT_TODOS]; // reset to defaults instead of empty
+  localStorage.setItem(LS_TODOS, JSON.stringify(todos));
+  renderTodos();
+});
+
+// Init render
+renderTodos();
+
 </script>
 </body>
 </html>
