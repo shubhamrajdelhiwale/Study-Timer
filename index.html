@@ -71,35 +71,36 @@
       <ul id="todoList" class="space-y-2"></ul>
     </section>
     <!-- Filters -->
-    <section class="rounded-lg border border-gray-200  p-4 bg-lime-500 text-blue-900  mb-6">
-      <h2 class="text-2xl font-bold mb-3">Filters</h2>
-      <div class="grid md:grid-cols-4 gap-3 items-end">
-        <div>
-          <label class="block text-lg font-semibold text-black  mb-2">Timeframe</label>
-          <select id="timeframe" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700">
-            <option value="day">Today</option>
-            <option value="week">This Week</option>
-            <option value="month" selected>This Month</option>
-            <option value="custom">Custom Range</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-lg font-semibold text-black mb-2">Subject</label>
-          <select id="subjectFilter" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700">
-            <option value="__all__">All Subjects</option>
-          </select>
-        </div>
-        <div id="dateAWrapper" class="hidden">
-          <label class="block text-sm mb-2">Start Date</label>
-          <input id="dateA" type="date" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700" />
-        </div>
-        <div id="dateBWrapper" class="hidden">
-          <label class="block text-sm mb-2">End Date</label>
-          <input id="dateB" type="date" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700" />
-        </div>
-      </div>
-      <div id="rangeInfo" class="mt-3 text-sm text-black dark:text-gray-300"></div>
-    </section>
+<!-- Filters -->
+<section class="rounded-lg border border-gray-200 p-4 bg-lime-500 text-blue-900 mb-6">
+  <h2 class="text-2xl font-bold mb-3">Filters</h2>
+  <div class="grid md:grid-cols-4 gap-3 items-end">
+    <div>
+      <label class="block text-lg font-semibold text-black mb-2">Timeframe</label>
+      <select id="timeframe" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700">
+        <option value="day">Today</option>
+        <option value="week">This Week</option>
+        <option value="month" selected>This Month</option>
+        <option value="custom">Custom Range</option>
+      </select>
+    </div>
+    <div>
+      <label class="block text-lg font-semibold text-black mb-2">Subject</label>
+      <select id="subjectFilter" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700">
+        <option value="__all__">All Subjects</option>
+      </select>
+    </div>
+    <div id="dateAWrapper" class="hidden">
+      <label class="block text-sm mb-2">Start Date</label>
+      <input id="dateA" type="date" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700" />
+    </div>
+    <div id="dateBWrapper" class="hidden">
+      <label class="block text-sm mb-2">End Date</label>
+      <input id="dateB" type="date" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700" />
+    </div>
+  </div>
+  <div id="rangeInfo" class="mt-3 text-sm text-black dark:text-gray-300"></div>
+</section>
 
     <!-- Time by subject -->
     <section class="rounded-lg border bg-yellow-300 text-black border-black  p-4 dark:bg-white/3 mb-6">
@@ -318,6 +319,7 @@ function computeAndRender() {
   rangeInfo.textContent = `${label} • ${a.toDateString()} → ${b.toDateString()}`;
   const subj = subjectFilter.value || '__all__';
 
+  // Filter sessions
   const filtered = sessions.filter(s => {
     const inRange = within(s.startISO, a, b);
     const subjMatch = subj === '__all__' || s.subject.trim().toLowerCase() === subj.toLowerCase();
@@ -346,35 +348,51 @@ function computeAndRender() {
     });
   }
 
-  // Table with delete button
+  // Group sessions by date
+  const sessionsByDate = filtered.reduce((acc, s) => {
+    const dateStr = new Date(s.startISO).toLocaleDateString();
+    if (!acc[dateStr]) acc[dateStr] = [];
+    acc[dateStr].push(s);
+    return acc;
+  }, {});
+
+  // Render table
   sessionsBody.innerHTML = '';
-  if (filtered.length === 0) {
+  const datesSorted = Object.keys(sessionsByDate).sort((a, b) => new Date(b) - new Date(a));
+  if (datesSorted.length === 0) {
     const row = document.createElement('tr');
     row.innerHTML = '<td colspan="6" class="py-3 text-gray-500 dark:text-gray-400">No sessions found.</td>';
     sessionsBody.appendChild(row);
   } else {
-    const sorted = filtered.slice().sort((a, b) => new Date(b.startISO) - new Date(a.startISO));
-    sorted.forEach(s => {
-      const d = new Date(s.startISO);
-      const fmt = iso => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      const tr = document.createElement('tr');
-      tr.className = 'border-b border-gray-100';
-      tr.innerHTML = `
-        <td class="py-2 pr-4">${d.toLocaleDateString()}</td>
-        <td class="py-2 pr-4">${s.subject}</td>
-        <td class="py-2 pr-4">${fmt(s.startISO)}</td>
-        <td class="py-2 pr-4">${fmt(s.endISO)}</td>
-        <td class="py-2 pr-4 font-mono">${formatHMS(s.durationSec || 0)}</td>
-        <td class="py-2 pr-4">
-          <button class="text-red-600 hover:underline" onclick="deleteSession('${s.id}')">Delete</button>
-        </td>
-      `;
-      sessionsBody.appendChild(tr);
+    datesSorted.forEach(date => {
+      // Date header row
+      const headerRow = document.createElement('tr');
+      headerRow.innerHTML = `<td colspan="6" class="py-1 font-bold bg-gray-300 text-black">${date}</td>`;
+      sessionsBody.appendChild(headerRow);
+
+      const daySessions = sessionsByDate[date].sort((a, b) => new Date(b.startISO) - new Date(a.startISO));
+      daySessions.forEach(s => {
+        const fmt = iso => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-gray-100';
+        tr.innerHTML = `
+          <td class="py-2 pr-4">${date}</td>
+          <td class="py-2 pr-4">${s.subject}</td>
+          <td class="py-2 pr-4">${fmt(s.startISO)}</td>
+          <td class="py-2 pr-4">${fmt(s.endISO)}</td>
+          <td class="py-2 pr-4 font-mono">${formatHMS(s.durationSec || 0)}</td>
+          <td class="py-2 pr-4">
+            <button class="text-red-600 hover:underline" onclick="deleteSession('${s.id}')">Delete</button>
+          </td>
+        `;
+        sessionsBody.appendChild(tr);
+      });
     });
   }
 
   tableMeta.textContent = `${filtered.length} row(s)`;
 }
+
 
 // Delete session by ID
 function deleteSession(id) {
@@ -558,7 +576,24 @@ clearTodosBtn.addEventListener("click", () => {
 
 // Init render
 renderTodos();
+// --- Show / hide date inputs dynamically ---
+function toggleDateInputs() {
+  if (timeframe.value === "custom") {
+    dateAWrapper.classList.remove("hidden");
+    dateBWrapper.classList.remove("hidden");
+  } else {
+    dateAWrapper.classList.add("hidden");
+    dateBWrapper.classList.add("hidden");
+  }
+  computeAndRender();
+}
 
+timeframe.addEventListener("change", toggleDateInputs);
+dateA.addEventListener("change", computeAndRender);
+dateB.addEventListener("change", computeAndRender);
+
+// Initialize correct state on page load
+toggleDateInputs();
 </script>
 </body>
 </html>
